@@ -236,7 +236,28 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-  /* FOOTER */
+  /* EXTRAS TOGGLE */
+  .extras-toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .extras-toggle-btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--card-bg); color: var(--gray); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.04em; transition: all 0.18s; white-space: nowrap;
+  }
+  .extras-toggle-btn .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--gray); transition: background 0.18s;
+  }
+  .extras-toggle-btn.extras-on {
+    border-color: var(--green-pitch); color: var(--green-pitch);
+    background: rgba(58,170,98,0.12);
+  }
+  .extras-toggle-btn.extras-on .dot { background: var(--green-pitch); }
+  .extras-toggle-btn.extras-off {
+    border-color: var(--red); color: var(--red);
+    background: rgba(214,48,49,0.1);
+  }
+  .extras-toggle-btn.extras-off .dot { background: var(--red); }
   .site-footer {
     position: fixed; bottom: 0; left: 0; right: 0;
     text-align: center; padding: 10px 16px;
@@ -321,6 +342,12 @@
   <div class="bowler-chips" id="bowlerChips"></div>
 
   <div class="section-title">Record Ball</div>
+  <div class="extras-toggle-row">
+    <button class="extras-toggle-btn extras-on" id="extrasToggleBtn" onclick="toggleExtras()">
+      <span class="dot"></span> Extras runs: ON
+    </button>
+    <span class="text-gray" style="font-size:0.75rem">Wide/NB penalty run counted</span>
+  </div>
   <div class="ball-grid">
     <button class="ball-btn run-0" onclick="recordBall(0)">DOT<br><small style="font-size:0.6rem;font-family:'DM Sans'">0</small></button>
     <button class="ball-btn" onclick="recordBall(1)">1</button>
@@ -417,7 +444,8 @@ function resetState(t1, t2, overs) {
     currentInnings: 0,
     innings: [freshInnings(), freshInnings()],
     viewingInnings: 0,
-    matchOver: false
+    matchOver: false,
+    extrasEnabled: true
   };
 }
 
@@ -446,13 +474,32 @@ function startMatch() {
   document.getElementById('targetInfo').style.display = 'none';
   document.getElementById('reqInfo').style.display = 'none';
   document.getElementById('bowlerInput').value = '';
+  const etb = document.getElementById('extrasToggleBtn');
+  etb.className = 'extras-toggle-btn extras-on';
+  etb.innerHTML = '<span class="dot"></span> Extras runs: ON';
+  etb.nextElementSibling.textContent = 'Wide/NB penalty run counted';
 
   showScreen('screenInnings');
   updateBadge('1st Innings');
   renderAll();
 }
 
-// ══════════ BOWLER ══════════
+// ══════════ EXTRAS TOGGLE ══════════
+function toggleExtras() {
+  state.extrasEnabled = !state.extrasEnabled;
+  const btn = document.getElementById('extrasToggleBtn');
+  if (state.extrasEnabled) {
+    btn.className = 'extras-toggle-btn extras-on';
+    btn.innerHTML = '<span class="dot"></span> Extras runs: ON';
+    btn.nextElementSibling.textContent = 'Wide/NB penalty run counted';
+  } else {
+    btn.className = 'extras-toggle-btn extras-off';
+    btn.innerHTML = '<span class="dot"></span> Extras runs: OFF';
+    btn.nextElementSibling.textContent = 'Wide/NB only counts ball, no run';
+  }
+}
+
+
 function setBowler() {
   const val = document.getElementById('bowlerInput').value.trim();
   if (!val) { toast('Enter bowler name'); return; }
@@ -562,9 +609,9 @@ function recordBall(val) {
   let display = '';
 
   if (val === 'W')       { inn.wickets++; display = 'W'; }
-  else if (val === 'Wd') { inn.runs += 1; display = 'Wd'; legal = false; }
-  else if (val === 'Nb') { inn.runs += 1; display = 'Nb'; legal = false; }
-  else if (val === 'Nb+4') { inn.runs += 5; display = 'Nb+4'; legal = false; }
+  else if (val === 'Wd') { if (state.extrasEnabled) inn.runs += 1; display = 'Wd'; legal = false; }
+  else if (val === 'Nb') { if (state.extrasEnabled) inn.runs += 1; display = 'Nb'; legal = false; }
+  else if (val === 'Nb+4') { inn.runs += state.extrasEnabled ? 5 : 4; display = 'Nb+4'; legal = false; }
   else { inn.runs += val; display = val === 0 ? '•' : String(val); }
 
   inn.currentOver.push({ display, val, legal });
