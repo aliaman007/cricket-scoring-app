@@ -415,9 +415,11 @@
     <button class="ball-btn run-w" onclick="recordBall('W')">OUT<br><small style="font-size:0.6rem;font-family:'DM Sans'">W</small></button>
     <button class="ball-btn run-nb" onclick="recordBall('Nb')">NO<br>BALL</button>
   </div>
-  <div class="extra-row" style="grid-template-columns:repeat(4,1fr)">
+  <div class="extra-row" style="grid-template-columns:repeat(3,1fr)">
     <button class="ball-btn run-wd" onclick="recordBall('Wd')">WIDE</button>
     <button class="ball-btn" onclick="recordBall(5)" style="font-size:1rem">5 (OB)</button>
+    <button class="ball-btn run-nb" onclick="recordBall('Nb+1')" style="font-size:0.85rem;font-family:'DM Sans';font-weight:600">NB+1</button>
+    <button class="ball-btn run-nb" onclick="recordBall('Nb+2')" style="font-size:0.85rem;font-family:'DM Sans';font-weight:600">NB+2</button>
     <button class="ball-btn" onclick="recordBall('Nb+4')" style="font-size:0.85rem;font-family:'DM Sans';font-weight:600">NB+4</button>
     <button class="ball-btn" onclick="recordBall('Nb+6')" style="font-size:0.85rem;font-family:'DM Sans';font-weight:600">NB+6</button>
   </div>
@@ -976,9 +978,11 @@ function creditBatterRuns(val) {
   } else if (val === 'W') {
     b.balls++;
     b.out = true;
-  } else if (val === 'Nb' || val === 'Nb+4' || val === 'Nb+6') {
+  } else if (val === 'Nb' || val === 'Nb+4' || val === 'Nb+6' || val === 'Nb+1' || val === 'Nb+2') {
     if (val === 'Nb+4') { b.runs += 4; b.fours++; }
     if (val === 'Nb+6') { b.runs += 6; b.sixes++; }
+    if (val === 'Nb+1') { b.runs += 1; }
+    if (val === 'Nb+2') { b.runs += 2; }
   }
   // Wides/dots don't credit batter balls (except W above)
 }
@@ -1033,6 +1037,8 @@ function computeBowlStats(inn) {
       else if (b.val==='Wd'||b.val==='Nb') s.runs+=1;
       else if (b.val==='Nb+4') s.runs+=5;
       else if (b.val==='Nb+6') s.runs+=7;
+      else if (b.val==='Nb+1') s.runs+=2;
+      else if (b.val==='Nb+2') s.runs+=3;
       else if (typeof b.val==='number') s.runs+=b.val;
     });
   }
@@ -1104,6 +1110,8 @@ function recordBall(val) {
   else if(val==='Nb')  { if(state.extrasEnabled) inn.runs+=1; display='Nb'; legal=false; }
   else if(val==='Nb+4'){ inn.runs+=state.extrasEnabled?5:4; display='Nb+4'; legal=false; }
   else if(val==='Nb+6'){ inn.runs+=state.extrasEnabled?7:6; display='Nb+6'; legal=false; }
+  else if(val==='Nb+1'){ inn.runs+=state.extrasEnabled?2:1; display='Nb+1'; legal=false; }
+  else if(val==='Nb+2'){ inn.runs+=state.extrasEnabled?3:2; display='Nb+2'; legal=false; }
   else { inn.runs+=val; display=val===0?'•':String(val); }
 
   // Credit batter BEFORE potential strike rotation
@@ -1168,6 +1176,8 @@ function calcOverRuns(balls) {
     if(b.val==='Wd'||b.val==='Nb') return a+1;
     if(b.val==='Nb+4') return a+5;
     if(b.val==='Nb+6') return a+7;
+    if(b.val==='Nb+1') return a+2;
+    if(b.val==='Nb+2') return a+3;
     if(typeof b.val==='number') return a+b.val;
     return a;
   }, 0);
@@ -1291,7 +1301,7 @@ function renderThisOver() {
   c.innerHTML = inn.currentOver.map(b => {
     let cls='';
     if(b.val===4)cls='run-4'; else if(b.val===6)cls='run-6'; else if(b.val==='W')cls='run-W';
-    else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4')cls='run-Nb';
+    else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4'||b.val==='Nb+6'||b.val==='Nb+1'||b.val==='Nb+2')cls='run-Nb';
     return `<div class="ball-pip ${cls}">${b.display}</div>`;
   }).join('');
 }
@@ -1314,7 +1324,7 @@ function renderOverLog() {
   c.innerHTML = [...inn.overs].reverse().map((o,ri) => {
     const i = inn.overs.length-1-ri;
     const bh = o.balls.map(b => {
-      let cls=''; if(b.val===4)cls='run-4'; else if(b.val===6)cls='run-6'; else if(b.val==='W')cls='run-W'; else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4'||b.val==='Nb+6')cls='run-Nb';
+      let cls=''; if(b.val===4)cls='run-4'; else if(b.val===6)cls='run-6'; else if(b.val==='W')cls='run-W'; else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4'||b.val==='Nb+6'||b.val==='Nb+1'||b.val==='Nb+2')cls='run-Nb';
       return `<div class="ball-pip ${cls}" style="width:28px;height:28px;font-size:0.7rem">${b.display}</div>`;
     }).join('');
     return `<div class="over-row"><div class="over-num">O${i+1}</div><div class="over-bowler">${o.bowler}</div><div class="over-balls">${bh}</div><div class="over-runs">${o.runs}</div></div>`;
@@ -1536,7 +1546,7 @@ function showResult() {
 function buildResultOverLog(inn, id) {
   document.getElementById(id).innerHTML = inn.overs.map((o,i) => {
     const bh = o.balls.map(b => {
-      let cls=''; if(b.val===4)cls='run-4'; else if(b.val===6)cls='run-6'; else if(b.val==='W')cls='run-W'; else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4')cls='run-Nb';
+      let cls=''; if(b.val===4)cls='run-4'; else if(b.val===6)cls='run-6'; else if(b.val==='W')cls='run-W'; else if(b.val==='Wd')cls='run-Wd'; else if(b.val==='Nb'||b.val==='Nb+4'||b.val==='Nb+6'||b.val==='Nb+1'||b.val==='Nb+2')cls='run-Nb';
       return `<div class="ball-pip ${cls}" style="width:28px;height:28px;font-size:0.7rem">${b.display}</div>`;
     }).join('');
     return `<div class="over-row"><div class="over-num">O${i+1}</div><div class="over-bowler">${o.bowler}</div><div class="over-balls">${bh}</div><div class="over-runs">${o.runs}</div></div>`;
