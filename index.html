@@ -775,19 +775,26 @@ function addBatter(name) {
   return inn.batters.length - 1;
 }
 
-function ensureOpeners() {
-  // Called after first ball setup — prompts for openers if batting enabled and not set
+function ensureOpeners(onReady) {
   const inn = currentInn();
-  if (!state.battingEnabled) return;
-  if (inn.striker !== null) return;
-  // Prompt opener 1 then opener 2
+  if (!state.battingEnabled || inn.striker !== null) {
+    // Already set or batting disabled — proceed immediately
+    if (onReady) onReady();
+    return;
+  }
+  // Prompt opener 1 then opener 2, then call onReady
   promptNewBatter('Opening Batter (Striker)', name1 => {
-    const idx1 = addBatter(name1);
-    inn.striker = idx1;
+    if (name1) {
+      const idx1 = addBatter(name1);
+      inn.striker = idx1;
+    }
     promptNewBatter('Opening Batter (Non-Striker)', name2 => {
-      const idx2 = addBatter(name2);
-      inn.nonStriker = idx2;
+      if (name2) {
+        const idx2 = addBatter(name2);
+        inn.nonStriker = idx2;
+      }
       renderAll();
+      if (onReady) onReady();
     });
   });
 }
@@ -1094,6 +1101,12 @@ function recordBall(val) {
   if (bInput && bInput !== inn.bowler) applyBowler(bInput);
   if (!inn.bowler) { toast('Set a bowler name first'); return; }
 
+  // If batting enabled and openers not set yet, prompt BEFORE recording the ball
+  if (state.battingEnabled && inn.striker === null && inn.batters.length === 0) {
+    ensureOpeners(() => recordBall(val));
+    return;
+  }
+
   // Snapshot for undo (includes batting state)
   inn.history.push({
     runs:inn.runs, wickets:inn.wickets, completedOvers:inn.completedOvers, balls:inn.balls,
@@ -1164,11 +1177,6 @@ function recordBall(val) {
   }
 
   renderAll();
-
-  // Prompt openers on first ball if not yet set
-  if (state.battingEnabled && inn.striker === null && val !== 'W') {
-    ensureOpeners();
-  }
 }
 
 function calcOverRuns(balls) {
@@ -1270,7 +1278,7 @@ function renderBattersStrip() {
   const isLive = state.viewingInnings === state.currentInnings;
 
   if (inn.striker === null && inn.nonStriker === null) {
-    c.innerHTML = '<span class="batters-strip-placeholder">Batters will appear after first ball</span>';
+    c.innerHTML = '<span class="batters-strip-placeholder">Set bowler and tap any ball to begin</span>';
     return;
   }
 
