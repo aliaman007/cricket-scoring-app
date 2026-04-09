@@ -1229,27 +1229,30 @@ function recordBall(val) {
   // Auto-rotate strike on legal batting runs (not W, not extras)
   if (legal && typeof val === 'number' && val > 0) autoRotateStrike(val);
 
-  // Wicket — ask for new batter
-  if (val === 'W') {
+  // Determine if innings is ending on this ball (so we skip new batter prompt)
+  const overJustCompleted = legal && inn.balls > 0 && inn.balls % 6 === 0;
+  const lastOverReached  = overJustCompleted && inn.completedOvers + 1 >= state.totalOvers;
+  const allOut           = inn.wickets >= 10;
+  const targetChased     = state.currentInnings === 1 && inn.runs >= state.innings[0].runs + 1;
+  const inningsEnding    = lastOverReached || allOut || targetChased;
+
+  // Wicket — ask for new batter ONLY if innings is continuing
+  if (val === 'W' && state.battingEnabled && !inningsEnding) {
     renderAll();
-    if (state.battingEnabled) {
-      promptNewBatterAfterWicket((name, recallIdx) => {
-        const inn2 = currentInn();
-        if (recallIdx !== null && recallIdx !== undefined) {
-          // Recalled a retired batter — reuse existing record with preserved stats
-          inn2.striker = recallIdx;
-        } else if (name) {
-          // Brand new batter
-          const idx = addBatter(name);
-          inn2.striker = idx;
-        }
-        renderAll();
-      });
-    }
+    promptNewBatterAfterWicket((name, recallIdx) => {
+      const inn2 = currentInn();
+      if (recallIdx !== null && recallIdx !== undefined) {
+        inn2.striker = recallIdx;
+      } else if (name) {
+        const idx = addBatter(name);
+        inn2.striker = idx;
+      }
+      renderAll();
+    });
   }
 
   // Over complete
-  if (legal && inn.balls > 0 && inn.balls % 6 === 0) {
+  if (overJustCompleted) {
     inn.overs.push({ bowler:inn.bowler, balls:JSON.parse(JSON.stringify(inn.currentOver)), runs:calcOverRuns(inn.currentOver) });
     inn.completedOvers++;
     inn.currentOver = [];
@@ -1264,10 +1267,8 @@ function recordBall(val) {
     toast('Over complete! Set next bowler.');
   }
 
-  if (inn.wickets >= 10) { renderAll(); toast('All out!'); setTimeout(() => endInnings(true), 700); return; }
-  if (state.currentInnings===1 && inn.runs >= state.innings[0].runs+1) {
-    renderAll(); toast('Target chased! 🎉'); setTimeout(() => showResult(), 700); return;
-  }
+  if (allOut) { renderAll(); toast('All out!'); setTimeout(() => endInnings(true), 700); return; }
+  if (targetChased) { renderAll(); toast('Target chased! 🎉'); setTimeout(() => showResult(), 700); return; }
 
   renderAll();
 }
